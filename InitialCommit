@@ -1,8 +1,8 @@
-<!doctype html> 
-<html lang="en"> 
-<head> 
+<!doctype html>
+<html lang="en">
+<head>
 	<meta charset="UTF-8" />
-	<title>Flappy Clone</title>
+    <title>Flappy Clone</title>
 	<script type="text/javascript" src="js/phaser.min.js"></script>
     <style type="text/css">
         body {
@@ -13,6 +13,107 @@
 <body>
 
 <script type="text/javascript">
+
+var game = new Phaser.Game(800, 600, Phaser.AUTO, '', { preload: preload, create: create, update: update });
+
+function preload() {
+
+    game.load.image('sky', 'assets/sky.png');
+    game.load.image('ground', 'assets/platform.png');
+    game.load.spritesheet('dude', 'assets/dude.png', 32, 48);
+
+}
+
+var player;
+var platforms;
+var cursors;
+
+var score = 0;
+var scoreText;
+var num=0;
+var winText;
+var sky;
+
+function create() {
+
+    game.physics.startSystem(Phaser.Physics.ARCADE);
+		game.world.setBounds(0, 0, 1000, 600);
+
+    sky=game.add.sprite(0, 0, 'sky');
+sky.scale.setTo(3,2);
+
+    platforms = game.add.group();
+
+    platforms.enableBody = true;
+
+    var ground = platforms.create(0, game.world.height - 64, 'ground');
+
+    ground.scale.setTo(3, 2);
+
+    ground.body.immovable = true;
+
+    var ledge = platforms.create(400, 430, 'ground');
+    ledge.body.immovable = true;
+
+    ledge = platforms.create(-150, 400, 'ground');
+    ledge.body.immovable = true;
+
+    player = game.add.sprite(32, game.world.height - 150, 'dude');
+		game.camera.follow(player);
+
+    game.physics.arcade.enable(player);
+
+    player.body.bounce.y = 0.2;
+    player.body.gravity.y = 300;
+    player.body.collideWorldBounds = false;
+
+    player.animations.add('left', [0, 1, 2, 3], 10, true);
+    player.animations.add('right', [5, 6, 7, 8], 10, true);
+
+    
+
+    //  The score
+    scoreText = game.add.text(16, 16, 'score: 0', { fontSize: '32px', fill: '#000' });
+
+    //  The controls
+    cursors = game.input.keyboard.createCursorKeys();
+
+}
+
+function update() {
+
+    //  Collide the player with the platforms
+    game.physics.arcade.collide(player, platforms);
+    game.physics.arcade.collide(stars, platforms);
+
+
+
+    if (cursors.left.isDown)
+    {
+        //  Move to the left bc why not
+        player.body.velocity.x = -150;
+
+        player.animations.play('left');
+    }
+
+   else
+    {
+    //move to right
+			player.body.velocity.x=150;
+			player.animations.play('right');
+
+    }
+
+    //  Allow the player to jump if they are touching the ground - will change later
+		if (cursors.up.isDown)
+    {
+        player.body.velocity.y = -160;
+    }
+
+}
+
+
+
 
 </script>
 
