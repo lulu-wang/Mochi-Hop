@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8" />
-    <title>Flappy Clone</title>
+    <title>Phaser - Making your first game, part 9</title>
 	<script type="text/javascript" src="js/phaser.min.js"></script>
     <style type="text/css">
         body {
@@ -14,105 +14,189 @@
 
 <script type="text/javascript">
 
-var game = new Phaser.Game(800, 600, Phaser.AUTO, '', { preload: preload, create: create, update: update });
+var game = new Phaser.Game(800,600, Phaser.AUTO, '', { preload: preload, create: create, update: update });
 
 function preload() {
 
     game.load.image('sky', 'assets/sky.png');
-    game.load.image('ground', 'assets/platform.png');
-    game.load.spritesheet('dude', 'assets/dude.png', 32, 48);
-
+    game.load.image('ground', 'assets/obstruc.png');
+    game.load.image('star', 'assets/star.png');
+    game.load.spritesheet('dude', 'assets/thing.png', 30.05, 19);
+game.load.image('topbound','assets/platform.png');
+game.load.image('button','assets/diamond.png');
 }
 
 var player;
 var platforms;
 var cursors;
 
+var stars;
 var score = 0;
 var scoreText;
 var num=0;
 var winText;
+var loseText;
 var sky;
+var spacekey;
+var ledge;
+var ledge2;
+var button;
 
 function create() {
 
+    //  We're going to be using physics, so enable the Arcade Physics system
     game.physics.startSystem(Phaser.Physics.ARCADE);
-		game.world.setBounds(0, 0, 1000, 600);
+		game.world.setBounds(0, 0, 100000, 600);
 
+    //  A simple background for our game
     sky=game.add.sprite(0, 0, 'sky');
-sky.scale.setTo(3,2);
+sky.scale.setTo(100000,2);
 
+    //  The platforms group contains the ground and the 2 ledges we can jump on
     platforms = game.add.group();
 
+    //  We will enable physics for any object that is created in this group
     platforms.enableBody = true;
 
-    var ground = platforms.create(0, game.world.height - 64, 'ground');
+		//top
+		var j = platforms.create(0, 0, 'topbound');
+		var h=platforms.create(0,600,'topbound');
 
-    ground.scale.setTo(3, 2);
+		//  Scale it to fit the width of the game (the original sprite is 400x32 in size)
+		j.scale.setTo(10000,0.1);
+		j.body.immovable=true;
+		h.scale.setTo(10000,0.1);
+		h.body.immovable=true;
 
-    ground.body.immovable = true;
+    //  Now let's create two ledges
+		var yRandom = game.rnd.integerInRange(-500,-100);
+		var xRandom=game.rnd.integerInRange(500,1000);
 
-    var ledge = platforms.create(400, 430, 'ground');
-    ledge.body.immovable = true;
+		for (var i=0;i<1000;i++){
 
-    ledge = platforms.create(-150, 400, 'ground');
-    ledge.body.immovable = true;
+		ledge= platforms.create(i*400+500,0,'ground');
+		ledge.scale.setTo(1.5,Math.random());
+		ledge.body.immovable=true;
 
+		ledge2= platforms.create(i*400+500,600,'ground');
+		ledge2.scale.setTo(1.5,-Math.random());
+		ledge2.body.immovable=true;
+
+		if (platforms.children.length > 0) {
+						// Kill lion once it leaves the screen
+						var firstChild = platforms.getChildAt(0);
+						if (firstChild.body.position.x < 0) {
+								firstChild.kill();
+								platforms.removeChild(firstChild);
+						}
+				}
+
+		}
+
+    // The player and its settings
     player = game.add.sprite(32, game.world.height - 150, 'dude');
-		game.camera.follow(player);
+		//  The score
+    scoreText = game.add.text(400,100, '0', { fontSize: '60px', fill: '#fff' });
 
+		game.camera.follow(player);
+scoreText.fixedToCamera=true;
+
+    //  We need to enable physics on the player
     game.physics.arcade.enable(player);
 
-    player.body.bounce.y = 0.2;
-    player.body.gravity.y = 300;
+    //  Player physics properties. Give the little guy a slight bounce.
+
+    player.body.gravity.y = 1500;
     player.body.collideWorldBounds = false;
 
-    player.animations.add('left', [0, 1, 2, 3], 10, true);
-    player.animations.add('right', [5, 6, 7, 8], 10, true);
+    //  Animation right.
+    player.animations.add('right', [0,1,2,3], 5, true);
 
-    
+    //  Finally some stars to collect
+    stars = game.add.group();
 
-    //  The score
-    scoreText = game.add.text(16, 16, 'score: 0', { fontSize: '32px', fill: '#000' });
+    //  We will enable physics for any star that is created in this group
+    stars.enableBody = true;
 
-    //  The controls
+    //  Here we'll create 12 of them evenly spaced apart
+    for (var i = 0; i < 12; i++)
+    {
+        //  Create a star inside of the 'stars' group
+        var star = stars.create(i*200+500,50,'star');
+
+        //  Let gravity do its thing
+      star.body.immovable=true;
+
+        //  This just gives each star a slightly random bounce value
+        star.body.bounce.y = 0.3+ Math.random() * 0.2;
+    }
+
+
+
+    //  Our controls.
     cursors = game.input.keyboard.createCursorKeys();
 
 }
 
 function update() {
 
-    //  Collide the player with the platforms
-    game.physics.arcade.collide(player, platforms);
-    game.physics.arcade.collide(stars, platforms);
+    //  Collide the player and the stars with the platforms
+    game.physics.arcade.collide(player, platforms,playerDie,null,this);
+    game.physics.arcade.overlap(player, platforms, playerDie, null, this);
 
+    //  Checks to see if the player overlaps with any of the stars, if he does call the collectStar function
+    game.physics.arcade.overlap(player, stars, collectStar, null, this);
 
 
     if (cursors.left.isDown)
     {
-        //  Move to the left bc why not
-        player.body.velocity.x = -150;
 
-        player.animations.play('left');
     }
 
    else
     {
-    //move to right
 			player.body.velocity.x=150;
 			player.animations.play('right');
 
     }
-
-    //  Allow the player to jump if they are touching the ground - will change later
-		if (cursors.up.isDown)
+this.spaceKey = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
+    //  Allow the player to jump if they are touching the ground.
+		if (this.spaceKey.isDown)
     {
-        player.body.velocity.y = -160;
+        player.body.velocity.y = -400;
     }
 
 }
+function playerDie (player,ground)
+{
+	loseText = game.add.text(400, 250, 'YOU LOSE.', { fontSize: '50px', fill: '#fff' });
+	loseText.fixedToCamera=true;
+player.body.velocity=0;
+player.animations.stop();
+player.frame=1;
 
+if (this.spaceKey.isDown)
+{
 
+}
+}
+
+function collectStar (player, star) {
+
+    // Removes the star from the screen
+    star.kill();
+
+    //  Add and update the score
+    score += 10;
+    scoreText.text = ''+score;
+	 num+=1;
+	if (num==12)
+	{
+			winText = game.add.text(400, 250, 'YOU WIN!', { fontSize: '50px', fill: '#fff' });
+			winText.isFixedToCamera=true;
+	}
+	else{}
+}
 
 
 </script>
