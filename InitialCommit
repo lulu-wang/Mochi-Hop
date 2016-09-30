@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8" />
-    <title>Phaser - Making your first game, part 9</title>
+    <title>FlappyClone</title>
 	<script type="text/javascript" src="js/phaser.min.js"></script>
     <style type="text/css">
         body {
@@ -20,6 +20,7 @@ function preload() {
 
     game.load.image('sky', 'assets/sky.png');
     game.load.image('ground', 'assets/obstruc.png');
+		game.load.image('ground2','assets/obstruc.png');
     game.load.image('star', 'assets/star.png');
     game.load.spritesheet('dude', 'assets/thing.png', 30.05, 19);
 game.load.image('topbound','assets/platform.png');
@@ -29,7 +30,7 @@ game.load.image('button','assets/diamond.png');
 var player;
 var platforms;
 var cursors;
-
+var platforms2;
 var stars;
 var score = 0;
 var scoreText;
@@ -41,9 +42,12 @@ var spacekey;
 var ledge;
 var ledge2;
 var button;
+var h;
+var y;
+
 
 function create() {
-
+score=0;
     //  We're going to be using physics, so enable the Arcade Physics system
     game.physics.startSystem(Phaser.Physics.ARCADE);
 		game.world.setBounds(0, 0, 100000, 600);
@@ -52,86 +56,60 @@ function create() {
     sky=game.add.sprite(0, 0, 'sky');
 sky.scale.setTo(100000,2);
 
-    //  The platforms group contains the ground and the 2 ledges we can jump on
+//collision
+
+
+//add obstructions and physics
     platforms = game.add.group();
-
-    //  We will enable physics for any object that is created in this group
+		platforms2=game.add.group();
     platforms.enableBody = true;
+		platforms2.enableBody=true;
 
-		//top
-		var j = platforms.create(0, 0, 'topbound');
-		var h=platforms.create(0,600,'topbound');
-
-		//  Scale it to fit the width of the game (the original sprite is 400x32 in size)
-		j.scale.setTo(10000,0.1);
-		j.body.immovable=true;
-		h.scale.setTo(10000,0.1);
-		h.body.immovable=true;
-
-    //  Now let's create two ledges
 		var yRandom = game.rnd.integerInRange(-500,-100);
 		var xRandom=game.rnd.integerInRange(500,1000);
 
 		for (var i=0;i<1000;i++){
 
+//gap height and position randomization within limits
+var center=Math.random()*400+100;
+var heightGap=Math.random()*60+50;
+
+
 		ledge= platforms.create(i*400+500,0,'ground');
-		ledge.scale.setTo(1.5,Math.random());
+		ledge.scale.setTo(1.5,(center-heightGap/2)/1000);
 		ledge.body.immovable=true;
 
-		ledge2= platforms.create(i*400+500,600,'ground');
-		ledge2.scale.setTo(1.5,-Math.random());
-		ledge2.body.immovable=true;
 
-		if (platforms.children.length > 0) {
-						// Kill lion once it leaves the screen
-						var firstChild = platforms.getChildAt(0);
-						if (firstChild.body.position.x < 0) {
-								firstChild.kill();
-								platforms.removeChild(firstChild);
-						}
-				}
+		ledge2= platforms.create(i*400+500,center+heightGap/2,'ground2');
+		ledge2.scale.setTo(1.5,500);
+		ledge2.body.immovable=true;
+		
+
+
 
 		}
 
+
     // The player and its settings
     player = game.add.sprite(32, game.world.height - 150, 'dude');
+    game.physics.arcade.enable(player);
+    
+    //for now:
+    player.body.collideWorldBounds = true;
+    
+    //hahahahaphysics
+    player.body.gravity.y = 1500;
+    
+    
 		//  The score
     scoreText = game.add.text(400,100, '0', { fontSize: '60px', fill: '#fff' });
 
 		game.camera.follow(player);
 scoreText.fixedToCamera=true;
 
-    //  We need to enable physics on the player
-    game.physics.arcade.enable(player);
-
-    //  Player physics properties. Give the little guy a slight bounce.
-
-    player.body.gravity.y = 1500;
-    player.body.collideWorldBounds = false;
 
     //  Animation right.
     player.animations.add('right', [0,1,2,3], 5, true);
-
-    //  Finally some stars to collect
-    stars = game.add.group();
-
-    //  We will enable physics for any star that is created in this group
-    stars.enableBody = true;
-
-    //  Here we'll create 12 of them evenly spaced apart
-    for (var i = 0; i < 12; i++)
-    {
-        //  Create a star inside of the 'stars' group
-        var star = stars.create(i*200+500,50,'star');
-
-        //  Let gravity do its thing
-      star.body.immovable=true;
-
-        //  This just gives each star a slightly random bounce value
-        star.body.bounce.y = 0.3+ Math.random() * 0.2;
-    }
-
-
 
     //  Our controls.
     cursors = game.input.keyboard.createCursorKeys();
@@ -140,34 +118,25 @@ scoreText.fixedToCamera=true;
 
 function update() {
 
-    //  Collide the player and the stars with the platforms
-    game.physics.arcade.collide(player, platforms,playerDie,null,this);
-    game.physics.arcade.overlap(player, platforms, playerDie, null, this);
-
-    //  Checks to see if the player overlaps with any of the stars, if he does call the collectStar function
-    game.physics.arcade.overlap(player, stars, collectStar, null, this);
-
-
-    if (cursors.left.isDown)
-    {
-
-    }
-
-   else
-    {
+    //  Collide the player with the platforms
+    game.physics.arcade.overlap(player, platforms,playerDie,null,this);
+    
+    //status quo
 			player.body.velocity.x=150;
 			player.animations.play('right');
 
-    }
+
 this.spaceKey = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
-    //  Allow the player to jump if they are touching the ground.
+    //  Allow the player to jump anytime
 		if (this.spaceKey.isDown)
     {
         player.body.velocity.y = -400;
     }
 
+
 }
-function playerDie (player,ground)
+
+function playerDie (player,platforms)
 {
 	loseText = game.add.text(400, 250, 'YOU LOSE.', { fontSize: '50px', fill: '#fff' });
 	loseText.fixedToCamera=true;
@@ -177,26 +146,11 @@ player.frame=1;
 
 if (this.spaceKey.isDown)
 {
-
+	create();
 }
 }
 
-function collectStar (player, star) {
 
-    // Removes the star from the screen
-    star.kill();
-
-    //  Add and update the score
-    score += 10;
-    scoreText.text = ''+score;
-	 num+=1;
-	if (num==12)
-	{
-			winText = game.add.text(400, 250, 'YOU WIN!', { fontSize: '50px', fill: '#fff' });
-			winText.isFixedToCamera=true;
-	}
-	else{}
-}
 
 
 </script>
